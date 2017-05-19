@@ -3,6 +3,8 @@ import logging
 import os
 import psutil
 
+ident = 0
+
 
 class Configuration:
     layer_sizes = []
@@ -46,19 +48,67 @@ class Measure:
         self.message = message
 
     def __enter__(self):
+        global ident
         process = psutil.Process(os.getpid())
         self.mem = process.memory_info().rss
         self.time = time.time()
-        logging.basicConfig(level=logging.DEBUG)
+        logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger('octolith')
-        self.logger.info(' Starting ' + self.message)
+        self.logger.info(''.join(['__'] * ident) + ' >>> Starting ' + self.message)
+        ident += 1
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        global ident
         process = psutil.Process(os.getpid())
-        self.logger.info(' Finished ' + self.message)
-        self.logger.info('Time consumed: %s sec, Memory consumed: %s MB', round(time.time() - self.time, 2),
+        ident -= 1
+        self.logger.info(''.join(['__'] * ident) +
+                         ' <<< Finished ' + self.message + ': Time consumed: %s sec, Memory consumed: %s MB',
+                         round(time.time() - self.time, 2),
                          round((process.memory_info().rss - self.mem) / 1024 / 1024, 2))
 
 
-class SampleReader:
-    pass
+
+class Sample:
+    w = 0
+    h = 0
+    nodes = list()
+
+    def __init__(self, w, h):
+        self.w = w
+        self.h = h
+        return self
+
+
+class SampleImage(Sample):
+    def __init__(self, w, h):
+        Sample.__init__(self, w, h)
+
+    def read(self, filename):
+        from PIL import Image
+        im = Image.open(filename)
+        pix = im.load()
+        self.nodes = [[sum(pix[xp, yp]) / 255 / 3. for xp in range(self.w)] for yp in range(self.h)]
+        return self
+
+# class SampleReader:
+#     def __init__(self, path, sample_class, net_config):
+#         from os import listdir
+#         from os.path import isfile, join
+#         self._config = net_config
+#         self._sample_class = sample_class
+#         self._path = path
+#         self._current = 0
+#         self._list = [f for f in listdir(self._path) if isfile(join(self._path, f))]
+#         self._list.sort()
+#
+#     def __iter__(self):
+#         return self
+#
+#     def __next__(self):
+#         if self._current >= len(self._list):
+#             raise StopIteration
+#         else:
+#             self._current += 1
+#             return self._sample_class(self._config).read(self._list[self._current - 1])
+#
+#     pass

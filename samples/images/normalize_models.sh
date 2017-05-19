@@ -67,7 +67,7 @@ rm $dst/*
 i=0
 
 for file in $src/*; do
-  echo "convert '$file' -resize "$w"x"$h" -gravity center -background "$canvas_color" -extent "$w"x"$h $dst/$(printf "%05d" $i).gif
-  convert "$file" -resize "$w"x"$h" -gravity center -background "$canvas_color" -extent "$w"x"$h" $dst/$(printf "%05d" $i).gif
+  echo "convert '$file' -resize "$w"x"$h" -gravity center -background "$canvas_color" -extent "$w"x"$h $dst/$(printf "%05d" $i).png
+  convert "$file" -resize "$w"x"$h" -gravity center -background "$canvas_color" -extent "$w"x"$h" $dst/$(printf "%05d" $i).png
   i=$(( $i + 1 ))
 done
