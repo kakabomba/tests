@@ -27,6 +27,9 @@ class Layer:
             for yp in range(self.h):
                 self.vertices[xp][yp] = data[xp][yp]
 
+    def __str__(self):
+        return "\n".join([' '.join(map(lambda x: "{:4.2f}".format(x), row)) for row in self.vertices])
+
     def __init__(self, w=100, h=100):
         self.w = w
         self.h = h
@@ -40,18 +43,38 @@ class Network:
     def __init__(self, configuration: Configuration):
         for index, c in enumerate(configuration.layer_sizes):
             self.Layers.append(Layer(c[0], c[1]))
-            if index > 0:
-                prev_size = configuration.layer_sizes[index - 1]
+            if index < len(configuration.layer_sizes) - 1:
+                next_size = configuration.layer_sizes[index + 1]
                 self.Edges.append(
-                    [[[[random.random() for xp in range(prev_size[0])] for yp in range(prev_size[1])] for x in
-                      range(c[0])] for y in
-                     range(c[1])])
+                    [[[[random.random() for xp in range(next_size[1])] for yp in range(next_size[0])]
+                      for y in range(c[1])] for x in range(c[0])])
 
     def train(self, sample: Layer):
         pass
 
+    def forward_propagate(self, from_layer_number, activation_function):
+        from_layer = self.Layers[from_layer_number]
+        next_layer = self.Layers[from_layer_number + 1]
+        for xn in range(next_layer.w):
+            for yn in range(next_layer.h):
+                sum = 0
+                for xf in range(from_layer.w):
+                    for yf in range(from_layer.h):
+                        sum += (self.Edges[from_layer_number][xf][yf][xn][yn] * from_layer.vertices[xf][yf])
+                next_layer.vertices[xn][yn] = activation_function(sum / from_layer.w / from_layer.h)
+        return self
+
     def clasify(self, input: Layer, activation_function):
         self.Layers[0].set_vertices(input.vertices)
+        for i, layer in enumerate(self.Layers):
+            if i < len(self.Layers) - 1:
+                print('Before propagation\n', self.Layers[i + 1])
+                self.forward_propagate(i, activation_function)
+                print('After propagation\n', self.Layers[i + 1])
+        return self
+
+    def get_result(self):
+        return self.Layers[len(self.Layers) - 1]
 
 
 class Measure:

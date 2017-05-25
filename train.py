@@ -2,7 +2,7 @@ from model import Network, Configuration, Measure, SampleImage, Layer
 import random, math
 
 with Measure("Work"):
-    configuration = Configuration(layer_sizes=[[100, 100], [50, 50], [1, 2]])
+    configuration = Configuration(layer_sizes=[[50, 50], [20, 20], [1, 2]])
 
     with Measure("network initializing with config: " + configuration.__str__()):
         net = Network(configuration)
@@ -22,7 +22,10 @@ with Measure("Work"):
 
 
     for sample in samples:
-        result = net.clasify(sample.input, activation_function=lambda x: 1 / (1 - math.exp(x)))
+        with Measure("clasify sample"):
+            result = net.clasify(sample.input, activation_function=lambda x: 1 / (1 + math.exp(-x))).get_result()
+            print(result)
+
 
 
 

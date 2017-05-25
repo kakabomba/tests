@@ -1,8 +1,8 @@
 #!/bin/bash
 
 
-def_w=100
-def_h=100
+def_w=50
+def_h=50
 def_canvas_color='rgb(255,255,255)'
 
 function usage {
@@ -68,6 +68,6 @@ i=0
 
 for file in $src/*; do
   echo "convert '$file' -resize "$w"x"$h" -gravity center -background "$canvas_color" -extent "$w"x"$h $dst/$(printf "%05d" $i).png
-  convert "$file" -resize "$w"x"$h" -gravity center -background "$canvas_color" -extent "$w"x"$h" $dst/$(printf "%05d" $i).png
+  convert "$file" -colorspace sRGB -type truecolor -background white -alpha remove -flatten -alpha off -resize "$w"x"$h" -gravity center -background "$canvas_color" -extent "$w"x"$h" $dst/$(printf "%05d" $i).png
   i=$(( $i + 1 ))
 done
