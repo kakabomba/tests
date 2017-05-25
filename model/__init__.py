@@ -2,6 +2,7 @@ import time
 import logging
 import os
 import psutil
+import random
 
 ident = 0
 
@@ -9,8 +10,8 @@ ident = 0
 class Configuration:
     layer_sizes = []
 
-    def __init__(self):
-        self.layer_sizes = [[100, 100], [50, 50], [2, 1]]
+    def __init__(self, layer_sizes):
+        self.layer_sizes = layer_sizes
 
     def __str__(self):
         return ', '.join(['Layer {} ({}x{})'.format(ind, c[0], c[1]) for ind, c in enumerate(self.layer_sizes)])
@@ -18,9 +19,18 @@ class Configuration:
 
 class Layer:
     vertices = [[]]
+    w = None
+    h = None
+
+    def set_vertices(self, data):
+        for xp in range(self.w):
+            for yp in range(self.h):
+                self.vertices[xp][yp] = data[xp][yp]
 
     def __init__(self, w=100, h=100):
-        self.data = [[0 for x in range(w)] for y in range(h)]
+        self.w = w
+        self.h = h
+        self.vertices = [[0 for y in range(h)] for x in range(w)]
 
 
 class Network:
@@ -33,14 +43,15 @@ class Network:
             if index > 0:
                 prev_size = configuration.layer_sizes[index - 1]
                 self.Edges.append(
-                    [[[[0. for xp in range(prev_size[0])] for yp in range(prev_size[1])] for x in range(c[0])] for y in
+                    [[[[random.random() for xp in range(prev_size[0])] for yp in range(prev_size[1])] for x in
+                      range(c[0])] for y in
                      range(c[1])])
 
     def train(self, sample: Layer):
         pass
 
-    def clasify(self, sample: Layer):
-        pass
+    def clasify(self, input: Layer, activation_function):
+        self.Layers[0].set_vertices(input.vertices)
 
 
 class Measure:
@@ -67,27 +78,45 @@ class Measure:
                          round((process.memory_info().rss - self.mem) / 1024 / 1024, 2))
 
 
-
 class Sample:
-    w = 0
-    h = 0
-    nodes = list()
+    output = None
+    input = None
 
-    def __init__(self, w, h):
-        self.w = w
-        self.h = h
+    def set_output(self, output: Layer):
+        self.output = output
+        return self
+
+    def set_input(self, input: Layer):
+        self.input = input
+        return self
+
+    def copy_output(self, data):
+        self.output = Layer(len(data), len(data[0]))
+        self.output.set_vertices(data)
+        return self
+
+    def copy_input(self, data):
+        self.input = Layer(len(data), len(data[0]))
+        self.input.set_vertices(data)
+        return self
+
+    def __init__(self):
         return self
 
 
 class SampleImage(Sample):
-    def __init__(self, w, h):
-        Sample.__init__(self, w, h)
+    def __init__(self):
+        Sample.__init__(self)
 
-    def read(self, filename):
+    def read_input(self, input_config, filename):
+        self.input = Layer(*input_config)
         from PIL import Image
         im = Image.open(filename)
         pix = im.load()
-        self.nodes = [[sum(pix[xp, yp]) / 255 / 3. for xp in range(self.w)] for yp in range(self.h)]
+        for xp in range(self.input.w):
+            for yp in range(self.input.h):
+                self.input.vertices[xp][yp] = \
+                    sum(pix[xp, yp]) / 255 / 3.
         return self
 
 # class SampleReader:

@@ -1,22 +1,48 @@
-from model import Network, Configuration, Measure, SampleImage
+from model import Network, Configuration, Measure, SampleImage, Layer
+import random, math
 
 with Measure("Work"):
-
-    configuration = Configuration()
+    configuration = Configuration(layer_sizes=[[100, 100], [50, 50], [1, 2]])
 
     with Measure("network initializing with config: " + configuration.__str__()):
         net = Network(configuration)
 
-    def read_image_samples(path):
+
+    def read_image_samples(path, apple_dog):
         from os import listdir
         from os.path import isfile, join
-        return [SampleImage(*configuration.layer_sizes[0]).read(path + f) for f in listdir(path) if isfile(join(path, f))]
+        return [SampleImage().
+                    read_input(configuration.layer_sizes[0], path + f).
+                    copy_output([[0, 1] if apple_dog else [1, 0]]) for f in listdir(path) if isfile(join(path, f))]
+
 
     with Measure("Reading samples: 'samples/images/apples,dogs/'"):
-        apples = read_image_samples('samples/images/apples/')
-        dogs = read_image_samples('samples/images/dogs/')
+        samples = read_image_samples('samples/images/apples/', True) + read_image_samples('samples/images/dogs/', False)
+        random.shuffle(samples)
 
 
-# for sample in SampleReader():
-#     net.clasify(sample, 0)
+    for sample in samples:
+        result = net.clasify(sample.input, activation_function=lambda x: 1 / (1 - math.exp(x)))
 
+
+
+
+
+        # for sample in SampleReader():
+        #     net.clasify(sample, 0)
+
+        # output_config =.
+        # read_input(configuration.layer_sizes[0], path + f).set_output(Layer())
+        # for f in listdir(path) if isfile(join(path, f))]
+        #
+        #
+        # with Measure("Reading samples: 'samples/images/apples,dogs/'"):
+        #     samples = read_image_samples('samples/images/apples/') + read_image_samples('samples/images/dogs/')
+        # random.shuffle(samples)
+
+
+
+
+
+        # for sample in SampleReader():
+        #     net.clasify(sample, 0)
