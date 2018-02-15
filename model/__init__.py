@@ -14,40 +14,43 @@ class Configuration:
         self.layer_sizes = layer_sizes
 
     def __str__(self):
-        return ', '.join(['Layer {} ({}x{})'.format(ind, c[0], c[1]) for ind, c in enumerate(self.layer_sizes)])
+        return ', '.join(['Layer {} = {} nodes'.format(ind, c) for ind, c in enumerate(self.layer_sizes)])
+
+
+class Connections:
+    prev_layer = None
+    next_layer = None
+    weights = []
+    interceptions = []
+
+    def __init__(self, prev_layer, next_layer, init_epsilon=10e-3):
+        self.prev_layer = prev_layer
+        self.next_layer = next_layer
+        self.weights = [[random.random()*init_epsilon for i in [None]*prev_layer.get_size()] for j in [None]*next_layer.get_size()]
+        self.interceptions = [random.random()*init_epsilon for i in [None] * next_layer.get_size()]
 
 
 class Layer:
-    vertices = [[]]
-    w = None
-    h = None
+    vertices = []
 
     def set_vertices(self, data):
-        for xp in range(self.w):
-            for yp in range(self.h):
-                self.vertices[xp][yp] = data[xp][yp]
+        self.vertices = [y for y in data]
+        return self
 
-    def __str__(self):
-        return "\n".join([' '.join(map(lambda x: "{:4.2f}".format(x), row)) for row in self.vertices])
+    def get_size(self):
+        return len(self.vertices)
 
-    def __init__(self, w=100, h=100):
-        self.w = w
-        self.h = h
-        self.vertices = [[0 for y in range(h)] for x in range(w)]
 
 
 class Network:
     Layers = []
-    Edges = []
+    Connections = []
 
     def __init__(self, configuration: Configuration):
         for index, c in enumerate(configuration.layer_sizes):
-            self.Layers.append(Layer(c[0], c[1]))
-            if index < len(configuration.layer_sizes) - 1:
-                next_size = configuration.layer_sizes[index + 1]
-                self.Edges.append(
-                    [[[[random.random() for xp in range(next_size[1])] for yp in range(next_size[0])]
-                      for y in range(c[1])] for x in range(c[0])])
+            self.Layers.append(Layer().set_vertices([0]*c))
+            if index > 0:
+                self.Connections.append(Connections(self.Layers[len(self.Layers)-2], self.Layers[len(self.Layers)-1]))
 
     def train(self, sample: Layer):
         pass
@@ -128,19 +131,39 @@ class Sample:
 
 
 class SampleImage(Sample):
+    image = None
+
+
     def __init__(self):
         Sample.__init__(self)
 
-    def read_input(self, input_config, filename):
-        self.input = Layer(*input_config)
+    def scale(self, new_size):
+        self.image = self.image.resize(new_size)
+        return self
+
+    def get_data(self):
+        return [sum(self.image.getpixel((i % self.image.width, i // self.image.width)))/3./255. for i in range(self.image.width * self.image.height)]
+
+    def read(self, filename):
         from PIL import Image
         im = Image.open(filename)
-        pix = im.load()
-        for xp in range(self.input.w):
-            for yp in range(self.input.h):
-                self.input.vertices[xp][yp] = \
-                    sum(pix[xp, yp]) / 255 / 3.
+        self.image = im.convert('RGB')
         return self
+
+    def get_w_h(self):
+        return self.image.width, self.image.height
+
+    @staticmethod
+    def calculate_average_w_h(sizes):
+        area = 1
+        aspect = 1
+
+        for s in sizes:
+            area = area * (s[0]*s[1])**(1/len(sizes))
+            aspect = aspect * (s[0]/s[1])**(1/len(sizes))
+
+        return round((area*aspect)**0.5), round((area/aspect)**0.5)
+
 
 # class SampleReader:
 #     def __init__(self, path, sample_class, net_config):
