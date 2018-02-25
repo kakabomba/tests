@@ -31,15 +31,20 @@ class Connections:
 
 
 class Layer:
-    vertices = []
+    vertices = None
+    size = None
 
     def set_vertices(self, data):
         self.vertices = [y for y in data]
+        self.size = len(self.vertices)
         return self
 
     def get_size(self):
-        return len(self.vertices)
+        return self.size
 
+def sigmoid(x):
+    import math
+    return 1 / (1 + math.exp(-x))
 
 
 class Network:
@@ -55,16 +60,24 @@ class Network:
     def train(self, sample: Layer):
         pass
 
-    def forward_propagate(self, from_layer_number, activation_function):
-        from_layer = self.Layers[from_layer_number]
-        next_layer = self.Layers[from_layer_number + 1]
-        for xn in range(next_layer.w):
-            for yn in range(next_layer.h):
-                sum = 0
-                for xf in range(from_layer.w):
-                    for yf in range(from_layer.h):
-                        sum += (self.Edges[from_layer_number][xf][yf][xn][yn] * from_layer.vertices[xf][yf])
-                next_layer.vertices[xn][yn] = activation_function(sum / from_layer.w / from_layer.h)
+    def back_propagate(self, from_layer_number, activation_function):
+        pass
+
+    def set_layer(self, data, layer_index = 0):
+        self.Layers[layer_index].set_vertices(data)
+        return self
+
+    def forward_propagate(self, activation_function = sigmoid):
+        for i, layer in enumerate(self.Layers):
+            self.forward_propagate_from_layer(i, activation_function)
+
+    def forward_propagate_from_layer(self, layer_index, activation_function = sigmoid):
+        import numpy
+        c = self.Connections[layer_index]
+        for i in range(c.next_layer.get_size()):
+            c.next_layer.vertices[i] = activation_function(numpy.array(c.weights[layer_index]) @
+                                                           numpy.array(c.next_layer.vertices) + numpy.array(c.interceptions))
+
         return self
 
     def clasify(self, input: Layer, activation_function):
@@ -108,23 +121,23 @@ class Sample:
     output = None
     input = None
 
-    def set_output(self, output: Layer):
-        self.output = output
-        return self
+    # def set_output(self, output: Layer):
+    #     self.output = output
+    #     return self
 
-    def set_input(self, input: Layer):
-        self.input = input
-        return self
+    # def set_input(self, input: Layer):
+    #     self.input = input
+    #     return self
 
-    def copy_output(self, data):
-        self.output = Layer(len(data), len(data[0]))
-        self.output.set_vertices(data)
-        return self
+    # def copy_output(self, data):
+    #     self.output = Layer(len(data), len(data[0]))
+    #     self.output.set_vertices(data)
+    #     return self
 
-    def copy_input(self, data):
-        self.input = Layer(len(data), len(data[0]))
-        self.input.set_vertices(data)
-        return self
+    # def copy_input(self, data):
+    #     self.input = Layer(len(data), len(data[0]))
+    #     self.input.set_vertices(data)
+    #     return self
 
     def __init__(self):
         return self
@@ -132,22 +145,38 @@ class Sample:
 
 class SampleImage(Sample):
     image = None
-
+    data = None
+    w = None
+    h = None
+    class_index = None
 
     def __init__(self):
         Sample.__init__(self)
 
     def scale(self, new_size):
         self.image = self.image.resize(new_size)
+        self.w, self.h =new_size
         return self
 
-    def get_data(self):
-        return [sum(self.image.getpixel((i % self.image.width, i // self.image.width)))/3./255. for i in range(self.image.width * self.image.height)]
 
     def read(self, filename):
         from PIL import Image
         im = Image.open(filename)
         self.image = im.convert('RGB')
+        self.w, self.h = (self.image.width, self.image.height)
+        im.close()
+        return self
+
+    def convert_to_data(self):
+        self.data = [sum(self.image.getpixel((i % self.w, i // self.w)))/3./255. for i in range(self.w * self.h)]
+        self.image.close()
+        return self
+
+    def get_data(self, index):
+        return self.data
+
+    def set_class(self, class_index):
+        self.class_index = class_index
         return self
 
     def get_w_h(self):
