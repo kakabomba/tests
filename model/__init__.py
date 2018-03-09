@@ -3,6 +3,7 @@ import logging
 import os
 import psutil
 import random
+import numpy
 
 ident = 0
 
@@ -20,14 +21,17 @@ class Configuration:
 class Connections:
     prev_layer = None
     next_layer = None
-    weights = []
-    interceptions = []
+    weights = None
+    interceptions = None
 
     def __init__(self, prev_layer, next_layer, init_epsilon=10e-3):
         self.prev_layer = prev_layer
         self.next_layer = next_layer
-        self.weights = [[random.random()*init_epsilon for i in [None]*prev_layer.get_size()] for j in [None]*next_layer.get_size()]
-        self.interceptions = [random.random()*init_epsilon for i in [None] * next_layer.get_size()]
+        self.weights = numpy.random.rand(prev_layer.get_size(), next_layer.get_size())
+        self.interceptions = numpy.random.rand(next_layer.get_size())
+        f = numpy.vectorize(lambda a: a*init_epsilon)
+        f(self.weights)
+        f(self.interceptions)
 
 
 class Layer:
@@ -35,12 +39,15 @@ class Layer:
     size = None
 
     def set_vertices(self, data):
-        self.vertices = [y for y in data]
-        self.size = len(self.vertices)
+        self.size = len(data)
+        self.vertices = numpy.zeros(self.size)
+        for idx, val in enumerate(data):
+            self.vertices[idx] = val
         return self
 
     def get_size(self):
         return self.size
+
 
 def sigmoid(x):
     import math
@@ -69,16 +76,19 @@ class Network:
 
     def forward_propagate(self, activation_function = sigmoid):
         for i, layer in enumerate(self.Layers):
-            self.forward_propagate_from_layer(i, activation_function)
+            if (i<len(self.Layers)-1):
+                self.forward_propagate_from_layer(i, activation_function)
 
     def forward_propagate_from_layer(self, layer_index, activation_function = sigmoid):
-        import numpy
         c = self.Connections[layer_index]
-        for i in range(c.next_layer.get_size()):
-            c.next_layer.vertices[i] = activation_function(numpy.array(c.weights[layer_index]) @
-                                                           numpy.array(c.next_layer.vertices) + numpy.array(c.interceptions))
-
+        from_layer = self.Layers[layer_index]
+        to_layer = self.Layers[layer_index + 1]
+        to_layer.vertices = numpy.vectorize(activation_function)(from_layer.vertices @ c.weights + c.interceptions)
         return self
+
+    def error_function(self, expected_value, layer_index):
+        return numpy.linalg.norm(expected_value - self.Layers[layer_index].vertices)
+
 
     def clasify(self, input: Layer, activation_function):
         self.Layers[0].set_vertices(input.vertices)
@@ -121,24 +131,6 @@ class Sample:
     output = None
     input = None
 
-    # def set_output(self, output: Layer):
-    #     self.output = output
-    #     return self
-
-    # def set_input(self, input: Layer):
-    #     self.input = input
-    #     return self
-
-    # def copy_output(self, data):
-    #     self.output = Layer(len(data), len(data[0]))
-    #     self.output.set_vertices(data)
-    #     return self
-
-    # def copy_input(self, data):
-    #     self.input = Layer(len(data), len(data[0]))
-    #     self.input.set_vertices(data)
-    #     return self
-
     def __init__(self):
         return self
 
@@ -148,7 +140,7 @@ class SampleImage(Sample):
     data = None
     w = None
     h = None
-    class_index = None
+    expected_value = None
 
     def __init__(self):
         Sample.__init__(self)
@@ -157,7 +149,6 @@ class SampleImage(Sample):
         self.image = self.image.resize(new_size)
         self.w, self.h =new_size
         return self
-
 
     def read(self, filename):
         from PIL import Image
@@ -175,8 +166,8 @@ class SampleImage(Sample):
     def get_data(self, index):
         return self.data
 
-    def set_class(self, class_index):
-        self.class_index = class_index
+    def set_expected_value(self, expected_value):
+        self.expected_value = expected_value
         return self
 
     def get_w_h(self):
@@ -194,25 +185,3 @@ class SampleImage(Sample):
         return round((area*aspect)**0.5), round((area/aspect)**0.5)
 
 
-# class SampleReader:
-#     def __init__(self, path, sample_class, net_config):
-#         from os import listdir
-#         from os.path import isfile, join
-#         self._config = net_config
-#         self._sample_class = sample_class
-#         self._path = path
-#         self._current = 0
-#         self._list = [f for f in listdir(self._path) if isfile(join(self._path, f))]
-#         self._list.sort()
-#
-#     def __iter__(self):
-#         return self
-#
-#     def __next__(self):
-#         if self._current >= len(self._list):
-#             raise StopIteration
-#         else:
-#             self._current += 1
-#             return self._sample_class(self._config).read(self._list[self._current - 1])
-#
-#     pass

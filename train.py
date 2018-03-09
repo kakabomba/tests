@@ -1,7 +1,9 @@
 from model import Network, Configuration, Measure, SampleImage, Layer
 import random, math
+import numpy
 
-image_folders = ['samples/images/apples/', 'samples/images/dogs/']
+image_folders = {'samples/images/apples/': {'expected_value': numpy.array([1., 0.])},
+                 'samples/images/dogs/': {'expected_value': numpy.array([0., 1.])}}
 
 with Measure("Work"):
     # configuration = Configuration(layer_sizes=[2500, 400, 2])
@@ -10,16 +12,19 @@ with Measure("Work"):
     #     net = Network(configuration)
 
 
-    def read_image_samples(path, class_index):
+    def read_image_samples(path, expected_value):
         from os import listdir
         from os.path import isfile, join
-        return [SampleImage().read(path + f).set_class(class_index) for f in listdir(path) if isfile(join(path, f))]
+
+        # [print(path) for f in listdir(path) if isfile(join(path, f))]
+        return [SampleImage().read(path + f).set_expected_value(expected_value
+        ) for f in listdir(path) if isfile(join(path, f))]
 
 
     with Measure("Reading samples: 'samples/images/**"):
         samples = []
-        for index, folder in enumerate(image_folders):
-            samples += read_image_samples(folder, index)
+        for folder in image_folders:
+            samples += read_image_samples(folder, image_folders[folder]['expected_value'])
         random.shuffle(samples)
 
     with Measure("Auto scaling images"):
@@ -44,11 +49,7 @@ with Measure("Work"):
             with Measure("clasify sample"):
                 net.set_layer(sample.data)
                 net.forward_propagate()
-                # result = net.clasify(sample.input, activation_function=lambda x: 1 / (1 + math.exp(-x))).get_result()
-                # print(sample.get_w_h())
-
-
-
+                net.error_function(sample.expected_value, len(net.Layers)-1)
 
 
 
@@ -63,10 +64,6 @@ with Measure("Work"):
         # with Measure("Reading samples: 'samples/images/apples,dogs/'"):
         #     samples = read_image_samples('samples/images/apples/') + read_image_samples('samples/images/dogs/')
         # random.shuffle(samples)
-
-
-
-
 
         # for sample in SampleReader():
         #     net.clasify(sample, 0)
